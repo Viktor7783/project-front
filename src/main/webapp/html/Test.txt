@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>RPG</title>
+    <script src=https://code.jquery.com/jquery-3.6.0.min.js></script>
+    <link type="text/css" rel="stylesheet" href="/css/my.css">
+</head>
+<body>
+<h1>RPG admin panel</h1>
+<h2>Accounts lists:</h2>
+<p id="countPage">Count per page:
+    <label>
+        <select>
+            <option value="3">3</option>
+            <option value="10">10</option>
+            <option value="15">15</option>
+            <option value="20">20</option>
+        </select>
+    </label>
+</p>
+<table id="players">
+    <tr>
+        <th>#</th>
+        <th>Name</th>
+        <th>Title</th>
+        <th>Race</th>
+        <th>Profession</th>
+        <th>Level</th>
+        <th>Birthday</th>
+        <th>Banned</th>
+        <th>Edit</th>
+        <th>Delete</th>
+    </tr>
+</table>
+<div id="pagination">Pages:</div>
+<script>
+
+    // Получаем параметры из URL
+    const urlParams = new URLSearchParams(window.location.search);
+    let currentPage = parseInt(urlParams.get('pageNumber')) || 1;
+    let pageSize = parseInt(urlParams.get('pageSize')) || 3;
+
+    $.get(`/rest/players?pageNumber=${currentPage}&pageSize=${pageSize}`, function (data) {
+
+        // Вычисляем диапазон данных для текущей страницы
+        let pageData = rangeOfPage(data, currentPage, pageSize);
+        // Наполняем таблицу согласно полученным данным и параметрам страницы (currentPage и pageSize) (Очищаем и заполняем таблицу)
+        clearAndFillTable(pageData);
+
+        //Сохраним селектор в переменную
+        const $pageSelect = $("#countPage select");
+        // Устанавливаем значение выпадающего списка в зависимости от pageSize
+        $pageSelect.val(pageSize);
+
+        // Обработчик изменения количества элементов на странице
+        $pageSelect.change(function () {
+            pageSize = $(this).val();
+            window.location.href = `/html/my.html?pageNumber=${currentPage}&pageSize=${pageSize}`;
+        });
+
+        // Получаем количество аккаунтов через Promise
+        $.get("/rest/players/count").then(function (accountsCount) {
+            let pagesForAllAccounts = Math.ceil(accountsCount / pageSize);
+
+            // Сохраняем результат селектора в переменную
+            const $pagination = $("#pagination");
+            // Очищаем и создаем кнопки пагинации
+            $pagination.empty();
+            $pagination.append("Pages:");
+            for (let i = 0; i < pagesForAllAccounts; i++) {
+                let page = i + 1;
+                // Красим активную кнопку в зелёный цвет:
+                let activeClass = page === currentPage ? 'active-page' : '';
+                let pageButton = `<button class="${activeClass}" onclick='location.href="/html/my.html?pageNumber=${page}&pageSize=${pageSize}"'>${page}</button>`;
+                $pagination.append(pageButton);
+            }
+
+        });
+    });
+
+    function getFormattedDate(birthday) {
+        let date = new Date(birthday);
+        let year = date.getFullYear();
+        let month = date.getMonth() + 1;
+        let day = date.getDate();
+        return month + '/' + day + '/' + year;
+    }
+
+    function clearAndFillTable(pData) {
+        $("#players tr:gt(0)").remove();
+        for (let i = 0; i < pData.length; i++) {
+            let playerInfo = pData[i];
+            $("#players").append(
+                "<tr>" +
+                "<td>" + playerInfo.id + "</td>" +
+                "<td>" + playerInfo.name + "</td>" +
+                "<td>" + playerInfo.title + "</td>" +
+                "<td>" + playerInfo.race + "</td>" +
+                "<td>" + playerInfo.profession + "</td>" +
+                "<td>" + playerInfo.level + "</td>" +
+                "<td>" + getFormattedDate(playerInfo.birthday) + "</td>" +
+                "<td>" + playerInfo.banned + "</td>" +
+                "<td>" + "<button id=\"edit\"><img src=\"/img/edit.png\" alt=\"редактировать\"></button>" + "</td>" +
+                "<td>" + "<button id=\"delete\"><img src=\"/img/delete.png\" alt=\"удалить\"></button>" + "</td>" +
+                "</tr>"
+            );
+        }
+    }
+
+    function rangeOfPage(curData, curPage, pSize) {
+        let start = (curPage - 1) * pSize;
+        let end = start + parseInt(pSize);
+        return curData.slice(start, end);
+    }
+
+
+</script>
+
+</body>
+</html>
